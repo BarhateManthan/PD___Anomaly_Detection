@@ -5,15 +5,15 @@ import time
 import torch
 import numpy as np
 
-# Initialize time variables
+# time var
 pr_time = 0
 curr_time = 0
 
-# Open the video file
+# vid file
 vid_path = r"C:\Users\manth\Downloads\Easy and cute ways to identify your luggage.mp4"
 cap = cv2.VideoCapture(vid_path)
 
-# Set the width and height for video frames
+# width and height of vid frame
 des_width = 1280
 des_height = 720
 
@@ -82,7 +82,7 @@ while True:
     # Apply the foreground mask to the black background
     img_with_mask = cv2.bitwise_and(black_bg, black_bg, mask=fgmask)
 
-    # Apply morphological operations to enhance visibility
+    # enhance visibility by morphology
     kernel = np.ones((5, 5), np.uint8)
     img_with_mask = cv2.morphologyEx(img_with_mask, cv2.MORPH_CLOSE, kernel)
     img_with_mask = cv2.morphologyEx(img_with_mask, cv2.MORPH_OPEN, kernel)
@@ -91,7 +91,7 @@ while True:
     cv2.imshow("Object Detection", img)
     cv2.imshow("Foreground Mask", img_with_mask)
 
-    # Calculate frames per second (FPS)
+    # Calculate (FPS)
     curr_time = time.time()
     fps = 1 / (curr_time - pr_time)
     pr_time = curr_time
