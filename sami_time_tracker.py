@@ -1,106 +1,100 @@
 import cv2
-from ultralytics import YOLO
-import math
 import cvzone
+import mediapipe as mp
 import time
-import torch
+
+# Initialize video capture
+cap = cv2.VideoCapture(0)
+previous_time = int(time.time())
+
+# Initialize face detection
+face_detect = mp.solutions.face_detection.FaceDetection()
+
+# Define variables to store coordinates at 0th and 4th frames
+coords_0th_frame = None
+coords_4th_frame = None
+
+def facedetect(face, x1, y1, track):
+
+    for element in face:
+        print(element)
+        f_dict = {'x': x1, 'y': y1, 'elapsed_time': track}  # Store data for a single face
+        print(f_dict)
+
+    return f_dict
+
+def suspicious(x11,x22):
+    print("more than 4 sec")
+    print(x11, x22)
+    diff=abs(x22-x11)
+    return diff
+
+def detect(diff):
+    if(diff>abs(100)):
+        print("difference:",diff)
+        print("non suspicious--------------------")
 
 
-
-# Initialize time variables
-pr_time = 0
-curr_time = 0
-
-# Open the video file
-cap=cv2.VideoCapture(0)
-previous_time=time.time()
-
-# Set the width and height for video frames
-des_width = 1280
-des_height = 720
-
-# Set the resolution of the video capture
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, des_width)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, des_height)
-
-# Load YOLO model
-model = YOLO("yolov8x.pt")
-# print(torch.cuda.is_available())
-# device = 'cuda' if torch.cuda.is_available() else 'cpu'
-# print(f'Using device: {device}')
-# model.to("cuda:0")
-# # if cv2.cuda.getCudaEnabledDeviceCount() > 0:
-#     # Check for available GPUs
-#     model.to("cuda:0")  # Move the model to the GPU
-
-# COCO classes
-coco_classes = [
-    "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat",
-    "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat",
-    "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack",
-    "umbrella", "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball",
-    "kite", "baseball bat", "baseball glove", "skateboard", "surfboard", "tennis racket",
-    "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple",
-    "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair",
-    "couch", "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote",
-    "keyboard", "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator", "book",
-    "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"
-]
+def ini_cor(x1):
+    return x1
 
 while True:
-    # Read a frame from the video
-    ret, img = cap.read()
+    # Read frame from video capture
+    ret, frame = cap.read()
 
-    # if the frame is read
-    if not ret:
+    # Convert frame from BGR to RGB
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+    # Perform face detection
+    results = face_detect.process(rgb_frame)
+
+    # Check if any faces are detected
+    if (results.detections):
+        print("Faces detected")
+
+        # Iterate over each detected face
+        for detection in results.detections:
+            # Get bounding box coordinates
+            ih, iw, _ = frame.shape
+            bboxC = detection.location_data.relative_bounding_box
+            x1 = bboxC.xmin * iw
+            y1 = bboxC.ymin * ih
+            print(x1, y1)
+
+            bbox = int(x1), int(y1), int(bboxC.width * iw), int(bboxC.height * ih)
+            elapsed_time = int(time.time()) - previous_time
+
+            # Draw rectangle around the face
+            cvzone.cornerRect(frame, bbox, int(30), int(5), 1, (0, 0, 0), (255, 255, 255))
+
+            cvzone.putTextRect(frame, format(elapsed_time), (10, 10), 0.5, 1, (255, 255, 255), (255, 0, 0),
+                               cv2.FONT_HERSHEY_PLAIN, 10, None, (0, 255, 0))
+            cv2.circle(frame, (int(bboxC.xmin * iw), int(bboxC.ymin * ih)), int(5), (0, 255, 255), 5)
+
+            # Call facedetect function to process face detection data
+            facedetect(results.detections, x1, y1, elapsed_time)
+            i = int(elapsed_time)
+
+
+            if elapsed_time == 0:
+                coords_0th_frame = ini_cor(x1)
+            if elapsed_time== 4:
+                coords_4th_frame = ini_cor(x1)
+                k=suspicious(coords_4th_frame,coords_0th_frame)
+                detect(k)
+
+
+    else:
+        print("No faces detected")
+
+    # Display the frame with rectangles
+    cv2.imshow("Video", frame)
+
+    # Check for key press
+    key = cv2.waitKey(1) & 0xFF
+    if key == ord("q"):
         break
 
-    # Flip the image horizontally
-    img = cv2.flip(img, 1)
-
-    # Perform object detection using YOLO
-    results = model.predict(img, stream=True)
-
-    # Process detection results
-    for result in results:
-        boxes = result.boxes
-        for box in boxes:
-            x1, y1, x2, y2 = map(int, box.xyxy[0])
-            w, h = x2 - x1, y2 - y1
-            cx, cy = x2 - (w / 2), y2 - (h / 2)
-            confidence = math.ceil((box.conf[0] * 100)) / 100
-            class_index = int(box.cls[0])
-            current_time=time.time()
-            elapsed_time=current_time-previous_time
-
-
-            # Check if the detected object is a suitcase
-            if coco_classes[class_index] == "suitcase":
-                # Highlight the bounding box
-
-                cvzone.cornerRect(img, (x1, y1, w, h), l=int(w / 10), rt=1, colorR=(255, 0, 0))
-                # Display class name
-                cvzone.putTextRect(img, f'{coco_classes[class_index]}', (max(0, x1), max(35, y1)),
-                                   scale=0.7, thickness=1, offset=10, colorR=(0, 0, 255))
-                cvzone.putTextRect(img, format(elapsed_time), (max(0, x1), max(35, y1)),
-                                   scale=0.7, thickness=1, offset=10, colorR=(0, 0, 255))
-
-    # Calculate frames per second (FPS)
-    curr_time = time.time()
-    fps = 1 / (curr_time - pr_time)
-    pr_time = curr_time
-
-    # Display FPS on the image
-    cv2.putText(img, f"{str(int(fps))}fps", (10, 70), cv2.FONT_HERSHEY_PLAIN, 2, (225, 0, 0), 3)
-
-    # Show the final image
-    cv2.imshow("Object Detection", img)
-
-    # Break the loop if the 'Esc' key is pressed
-    if cv2.waitKey(1) & 0xFF == 27:
-        break
-
-# Release the video capture
-# close all windows
+# Release video capture and close all OpenCV windows
 cap.release()
 cv2.destroyAllWindows()
