@@ -9,10 +9,13 @@ import torch
 # Initialize time variables
 pr_time = 0
 curr_time = 0
+previous_time=int(time.time())
 
+centre_points_current_frame=[]
+centre_points_previous_frame=[]
 # Open the video file
-vid_path = r"C:\Users\manth\Downloads\Business men walking with luggage through a plaza in Bologna Italy (1).mp4"
-cap = cv2.VideoCapture(vid_path)
+# vid_path = r"C:\Users\manth\Downloads\Business men walking with luggage through a plaza in Bologna Italy (1).mp4"
+cap = cv2.VideoCapture(1)
 
 # Set the width and height for video frames
 des_width = 1280
@@ -23,7 +26,7 @@ cap.set(cv2.CAP_PROP_FRAME_WIDTH, des_width)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, des_height)
 
 # Load YOLO model
-model = YOLO("yolov8x.pt")
+model = YOLO("yolov8n.pt")
 print(torch.cuda.is_available())
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f'Using device: {device}')
@@ -45,6 +48,14 @@ coco_classes = [
     "keyboard", "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator", "book",
     "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"
 ]
+
+# def detect_abandoned(p1,p2):
+#     diff=int(math.hypot(p1[0]-p2[0],p1[1]-p2[1]))
+#     print("difference",diff)
+#     if diff<30:
+#         print("NON ATTENDED!!!!!!!!")
+#     else:
+#         print("attended")
 
 while True:
     # Read a frame from the video
@@ -71,12 +82,33 @@ while True:
             class_index = int(box.cls[0])
 
             # Check if the detected object is a suitcase
-            if coco_classes[class_index] == "suitcase":
+            if coco_classes[class_index] == "cell phone":
                 # Highlight the bounding box
-                cvzone.cornerRect(img, (x1, y1, w, h), l=int(w / 10), rt=1, colorR=(255, 0, 0))
+                print("cell phone detected!!!!")
+
+                current_time=int(time.time())
+                elapsed_time=current_time-previous_time
                 # Display class name
-                cvzone.putTextRect(img, f'{coco_classes[class_index]}', (max(0, x1), max(35, y1)),
-                                   scale=0.7, thickness=1, offset=10, colorR=(0, 0, 255))
+                cv2.putText(img,f'{coco_classes[class_index]}',(x2,y2),cv2.FONT_HERSHEY_PLAIN,0.5,(255,0,0),2,2)
+                print("obj_centre_points:",(int(cx),int(cy)))
+                centre_points_current_frame.append((cx,cy))
+
+                cv2.circle(img, (int(cx), int(cy)), 2, (0, 0, 255), 3)
+                cv2.putText(img, format(elapsed_time), (x1, y1), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 255, 0), 2, 2)
+
+                for pt1 in centre_points_current_frame:
+                    for pt2 in centre_points_previous_frame:
+                        diff=(math.hypot(pt1[0]-pt2[0],pt1[1]-pt2[1]))
+                        # print("DIFFERENCE",diff)
+                        if diff<10 :
+                            print("UNATTENDED>>>>>>>>>")
+                            cv2.rectangle(img, (x1, y1), (x1 + w, y1 + h), (0, 0, 255), 2)
+
+                        else:
+                            print("attended")
+                            cv2.rectangle(img, (x1, y1), (x1 + w, y1 + h), (0, 255, 0), 2)
+
+
 
     # Calculate frames per second (FPS)
     curr_time = time.time()
@@ -87,13 +119,17 @@ while True:
     cv2.putText(img, f"{str(int(fps))}fps", (10, 70), cv2.FONT_HERSHEY_PLAIN, 2, (225, 0, 0), 3)
 
     # Show the final image
-    cv2.imshow("Object Detection", img)
+    resized=cv2.resize(img,(680,420))
+    cv2.imshow("Object Detection", resized)
+    centre_points_previous_frame=centre_points_current_frame.copy()
 
     # Break the loop if the 'Esc' key is pressed
-    if cv2.waitKey(1) & 0xFF == 27:
+    if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
 # Release the video capture
 # close all windows
 cap.release()
 cv2.destroyAllWindows()
+
+
