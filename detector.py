@@ -1,10 +1,17 @@
+import ssl
+# run this on proxy free net and replace your mail with the unique token generated 
+# when you allow 2fa on your mail via google app password for third party apps
 import cv2
 from ultralytics import YOLO
 import math
 import cvzone
 import time
 import torch
+import smtplib
 
+server = smtplib.SMTP("smtp.gmail.com", 587)
+server.starttls()
+server.login('your gmail', 'ur token')
 
 # Initialize time variables
 pr_time = 0
@@ -14,8 +21,8 @@ previous_time=int(time.time())
 centre_points_current_frame=[]
 centre_points_previous_frame=[]
 # Open the video file
-# vid_path = r"C:\Users\manth\Downloads\Business men walking with luggage through a plaza in Bologna Italy (1).mp4"
-cap = cv2.VideoCapture(1)
+vid_path = r"C:\Users\manth\Downloads\Easy and cute ways to identify your luggage.mp4"
+cap = cv2.VideoCapture(vid_path)
 
 # Set the width and height for video frames
 des_width = 1280
@@ -82,9 +89,9 @@ while True:
             class_index = int(box.cls[0])
 
             # Check if the detected object is a suitcase
-            if coco_classes[class_index] == "cell phone":
+            if coco_classes[class_index] == "suitcase":
                 # Highlight the bounding box
-                print("cell phone detected!!!!")
+                print("suitcase detected!!!!")
 
                 current_time=int(time.time())
                 elapsed_time=current_time-previous_time
@@ -103,6 +110,8 @@ while True:
                         if diff<10 :
                             print("UNATTENDED>>>>>>>>>")
                             cv2.rectangle(img, (x1, y1), (x1 + w, y1 + h), (0, 0, 255), 2)
+                            server.sendmail('sender id', 'receiver id', 'Bag is Unattended !!! PPT banvte ek slide ahe mail vali !!!')
+
 
                         else:
                             print("attended")
